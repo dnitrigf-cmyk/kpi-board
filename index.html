@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>KPI Board (Firebase PWA)</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#0c1118"/>
+</head>
+<body>
+<header>
+  <h1>KPI Board</h1>
+  <span class="tag">Online • PWA</span>
+</header>
+
+<!-- AUTH VIEW -->
+<section id="authView" style="display:none; padding:16px;">
+  <div class="card" style="max-width:340px;margin:0 auto;">
+    <h3>Вход</h3>
+    <form id="loginForm" class="vstack">
+      <label>Email <input id="loginEmail" type="email" required /></label>
+      <label>Пароль <input id="loginPass" type="password" required minlength="6" /></label>
+      <button class="btn primary" type="submit">Войти</button>
+    </form>
+    <p class="muted">Нет аккаунта? <a href="#" id="goRegister">Зарегистрироваться</a></p>
+
+    <form id="registerForm" class="vstack" style="display:none;">
+      <label>Email <input id="regEmail" type="email" required /></label>
+      <label>Пароль <input id="regPass" type="password" required minlength="6" /></label>
+      <button class="btn primary" type="submit">Создать аккаунт</button>
+      <p class="muted">Уже есть аккаунт? <a href="#" id="goLogin">Войти</a></p>
+    </form>
+  </div>
+</section>
+
+<!-- APP VIEW -->
+<main id="appView" style="display:none;">
+  <aside class="side">
+    <div class="group">
+      <button id="addKpi">Добавить KPI</button>
+      <button id="addWeek">Добавить неделю</button>
+      <button id="delRow">Удалить строку</button>
+    </div>
+  </aside>
+
+  <section class="grid-wrap">
+    <div class="head-controls">
+      <div class="hc-spacer"></div>
+      <div id="userBadge" class="muted"></div>
+      <button id="btnLogout" class="hc-btn">Выйти</button>
+    </div>
+    <table id="kpiTable">
+      <thead>
+        <tr id="theadRow">
+          <th class="col-kpi">KPI name</th>
+          <th class="col-target">Target</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+
+    <footer class="usersbar">
+      <div id="users"></div>
+    </footer>
+  </section>
+</main>
+
+<!-- Firebase SDK + config -->
+<script type="module" src="firebase-config.js"></script>
+<script type="module" src="auth.js"></script>
+<script src="app.js"></script>
+<script type="module" src="app-fb-shim.js"></script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js');
+  });
+}
+</script>
+</body>
+</html>
+
