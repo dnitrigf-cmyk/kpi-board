@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>KPI Board (Multi-user Offline)</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="manifest" href="manifest.webmanifest" />
+</head>
+<body>
+<header>
+  <h1>KPI Board</h1>
+  <span class="tag">Offline multi-user</span>
+</header>
+
+<main>
+  <aside class="side">
+    <div class="group">
+      <button id="addKpi">Добавить KPI</button>
+      <button id="addWeek">Добавить неделю</button>
+      <button id="delRow">Удалить строку</button>
+    </div>
+  </aside>
+
+  <section class="grid-wrap">
+    <table id="kpiTable">
+      <thead>
+        <tr id="theadRow">
+          <th class="col-kpi">KPI name</th>
+          <th class="col-target">Target</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+
+    <footer class="usersbar">
+      <div id="users"></div>
+      <div class="addUser">
+        <input id="newUserName" placeholder="Добавить имя..." />
+        <button id="addUser">+</button>
+      </div>
+    </footer>
+  </section>
+</main>
+
+<script src="app.js"></script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+</script>
+
+<script type="module" src="firebase-config.js"></script>
+<script type="module" src="app-fb-shim.js"></script>
+</body>
+</html>
