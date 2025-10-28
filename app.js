@@ -1101,4 +1101,3 @@ function hideDeprecatedButtons(){
 // ---------- Init ----------
 load();
 renderTable();
-
