@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 
-<!-- стартуем в тёмной -->
+<!-- стартуем в тёмной теме -->
 <body class="theme-dark">
   <header>
     <h1>KPI Board</h1>
@@ -65,7 +65,7 @@
   <!-- корень всех модалок -->
   <div id="modal-root"></div>
 
-  <!-- ===== THEME ENGINE (единственный скрипт переключения) ===== -->
+  <!-- ===== THEME ENGINE (минимальный и изолированный) ===== -->
   <script>
   (function(){
     const KEY = 'kpi-theme';
@@ -99,5 +99,7 @@
     new MutationObserver(attach).observe(document.documentElement, {childList:true,subtree:true});
   })();
   </script>
+
+  <script defer src="app.js"></script>
 </body>
 </html>
