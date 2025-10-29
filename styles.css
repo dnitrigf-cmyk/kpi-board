@@ -12,12 +12,12 @@ body.theme-dark{
   --muted:#a8b6c9;
   --border:#1e2a3b;
 
-  /* осветлённые цвета индикаторов */
-  --bar-green:#7BE0B5;
-  --bar-yellow:#F1D36B;
-  --bar-red:#F08C96;
+  /* более светлые и заметные оттенки индикаторов */
+  --bar-green:#8BE4C2;   /* было 7BE0B5 */
+  --bar-yellow:#FFD575;  /* было F1D36B */
+  --bar-red:#FFA1AB;     /* было F08C96 */
 
-  --track:#1a222e;
+  --track:#141c29;       /* было #1a222e — сделал чуть темнее для контраста */
   --shadow:0 8px 22px rgba(0,0,0,.35);
 
   --btn-ghost:#101a28;
@@ -39,9 +39,9 @@ body.theme-light{
   --muted:#5b6b82;
   --border:#dee3ea;
 
-  --bar-green:#66C791;
-  --bar-yellow:#E3BC35;
-  --bar-red:#E06372;
+  --bar-green:#38C793;   /* было 66C791 — сделал насыщеннее */
+  --bar-yellow:#E8C23A;  /* было E3BC35 */
+  --bar-red:#E15566;     /* было E06372 */
 
   --track:#eef2f7;
   --shadow:0 8px 22px rgba(14,30,62,.10);
@@ -79,7 +79,7 @@ header h1{margin:0;font-size:16px;font-weight:700;color:var(--text)}
   border-radius:10px; padding:2px 8px; font-size:12px;
 }
 
-/* ===== APP MENU (≡) ===== */
+/* ===== APP MENU (≡ / Theme) ===== */
 .app-menu-btn{
   margin-left:auto;
   background:var(--btn-ghost); border:1px solid var(--border);
@@ -197,6 +197,11 @@ body.theme-light .rag.progress .pct{
 }
 .inline-input:focus{ border-color:#9bb1cc; background:#fff }
 
+/* адаптация инпутов под тёмную тему */
+body.theme-dark .inline-input{
+  background:#0f1620; color:var(--text); border-color:#2a3a50;
+}
+
 /* ===== USERS BAR (bottom) ===== */
 .usersbar{
   position:sticky; bottom:0; left:0; right:0;
@@ -238,9 +243,13 @@ body.theme-light .rag.progress .pct{
 .ctx-item{
   padding:8px 10px; border-radius:8px; cursor:pointer; user-select:none;
 }
-.ctx-item:hover{ background:#f3f6fb; }
+/* разные hover для тёмной/светлой темы */
+body.theme-dark .ctx-item:hover{ background:rgba(255,255,255,.06); }
+body.theme-light .ctx-item:hover{ background:#f3f6fb; }
+
 .ctx-item.danger{ color:#b42318; }
-.ctx-item.danger:hover{ background:#fdecec; }
+body.theme-light .ctx-item.danger:hover{ background:#fdecec; }
+body.theme-dark .ctx-item.danger:hover{ background:rgba(255,0,0,.08); }
 
 /* ===== SCROLLBARS ===== */
 .grid-wrap::-webkit-scrollbar{ height:10px; width:10px; }
@@ -305,6 +314,11 @@ body.theme-light .rag.progress .pct{
 .modal-error{
   margin:8px 2px 0; color:#b42318; font-size:12px;
   background:#fdecec; border:1px solid #f3b2b0; padding:6px 8px; border-radius:8px;
+}
+
+/* адаптация инпутов модалки под тёмную тему */
+body.theme-dark .modal-input{
+  background:#0f1620; color:var(--text); border-color:#2a3a50;
 }
 
 .modal-actions{
