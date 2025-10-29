@@ -4,12 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>KPI Board</title>
-
-  <!-- антикэш -->
-  <link rel="stylesheet" href="styles.css?v=fix-3" />
+  <link rel="stylesheet" href="styles.css?v=fix-hard-1" />
 </head>
 
-<body class="theme-light"><!-- можно стартовать и с theme-dark -->
+<body class="theme-light"><!-- можно theme-dark -->
   <header>
     <h1>KPI Board</h1>
     <span class="tag">Firebase Shared</span>
@@ -60,39 +58,61 @@
   (function(){
     const KEY = 'kpi-theme';
     const root = document.body;
-
     function apply(theme){
       root.classList.remove('theme-light','theme-dark','light','dark');
       root.classList.add(theme === 'light' ? 'theme-light' : 'theme-dark');
       localStorage.setItem(KEY, theme);
     }
-
-    // init
     apply(localStorage.getItem(KEY) || (root.classList.contains('theme-dark') ? 'dark' : 'light'));
-
-    // toggle
     window.toggleTheme = function(){
-      const theme = root.classList.contains('theme-light') ? 'dark' : 'light';
-      apply(theme);
-      console.log('Theme:', theme); // диагностика
+      apply(root.classList.contains('theme-light') ? 'dark' : 'light');
     };
-
-    // bind button (и при динамическом DOM)
     const attach = () => {
       const btn = document.getElementById('themeToggle');
-      if (btn && !btn.__bound){
-        btn.__bound = true;
-        btn.addEventListener('click', window.toggleTheme);
-      }
+      if (btn && !btn.__bound){ btn.__bound = true; btn.addEventListener('click', window.toggleTheme); }
     };
-    if (document.readyState === 'loading')
-      document.addEventListener('DOMContentLoaded', attach);
-    else attach();
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach); else attach();
     new MutationObserver(attach).observe(document.documentElement, {childList:true,subtree:true});
   })();
   </script>
 
-  <!-- твой основной JS (оставь как есть) -->
-  <script defer src="app.js?v=fix-3"></script>
+  <!-- твой основной JS -->
+  <script defer src="app.js?v=fix-hard-1"></script>
+
+  <!-- ==== PATCH: принудительный инлайн-цвет баров из CSS-переменных темы ==== -->
+  <script>
+  (function(){
+    function cssVar(name){
+      return getComputedStyle(document.body).getPropertyValue(name).trim();
+    }
+    function colorFromPercent(p){
+      if (p >= 80) return cssVar('--bar-green');
+      if (p >= 60) return cssVar('--bar-yellow');
+      return cssVar('--bar-red');
+    }
+    // перехватываем существующие функции и дописываем им инлайн-цвет
+    const _make = window.makeProgress;
+    if (typeof _make === 'function'){
+      window.makeProgress = function(v){
+        const el = _make(v);
+        const pct = el.querySelector('.pct')?.textContent || '';
+        const n = parseFloat(pct.replace('%','')) || null;
+        const bar = el.querySelector('.bar');
+        if (bar && n != null) bar.style.background = colorFromPercent(n);
+        return el;
+      }
+    }
+    const _paint = window.paintCellProgress;
+    if (typeof _paint === 'function'){
+      window.paintCellProgress = function(container, v){
+        _paint(container, v);
+        const pct = container.querySelector('.pct')?.textContent || '';
+        const n = parseFloat(pct.replace('%','')) || null;
+        const bar = container.querySelector('.bar');
+        if (bar && n != null) bar.style.background = colorFromPercent(n);
+      }
+    }
+  })();
+  </script>
 </body>
 </html>
