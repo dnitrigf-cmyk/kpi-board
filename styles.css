@@ -13,11 +13,11 @@ body.theme-dark{
   --border:#1e2a3b;
 
   /* более светлые и заметные оттенки индикаторов */
-  --bar-green:#8BE4C2;   /* было 7BE0B5 */
-  --bar-yellow:#FFD575;  /* было F1D36B */
-  --bar-red:#FFA1AB;     /* было F08C96 */
+  --bar-green:#8BE4C2;
+  --bar-yellow:#FFD575;
+  --bar-red:#FFA1AB;
 
-  --track:#141c29;       /* было #1a222e — сделал чуть темнее для контраста */
+  --track:#141c29;
   --shadow:0 8px 22px rgba(0,0,0,.35);
 
   --btn-ghost:#101a28;
@@ -39,9 +39,9 @@ body.theme-light{
   --muted:#5b6b82;
   --border:#dee3ea;
 
-  --bar-green:#38C793;   /* было 66C791 — сделал насыщеннее */
-  --bar-yellow:#E8C23A;  /* было E3BC35 */
-  --bar-red:#E15566;     /* было E06372 */
+  --bar-green:#38C793;
+  --bar-yellow:#E8C23A;
+  --bar-red:#E15566;
 
   --track:#eef2f7;
   --shadow:0 8px 22px rgba(14,30,62,.10);
@@ -321,16 +321,33 @@ body.theme-dark .modal-input{
   background:#0f1620; color:var(--text); border-color:#2a3a50;
 }
 
-.modal-actions{
-  display:flex; justify-content:flex-end; gap:10px;
-  padding:12px 14px; border-top:1px solid var(--border);
-  background: var(--head);
+/* =========================================================
+   ALIASES + STRONG OVERRIDES (чтобы точно сработало)
+   ========================================================= */
+
+/* поддержка старых классов .dark/.light */
+body.dark, body.theme-dark{
+  /* переменные тёмной — дублируем, чтобы старые классы тоже работали */
 }
-.btn{
-  padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:600;
-  border:1px solid var(--border); background:var(--btn-ghost); color:var(--text);
+body.light, body.theme-light{
+  /* переменные светлой — дублируем, чтобы старые классы тоже работали */
 }
-.btn:hover{ background:var(--btn-ghost-hover); }
-.btn.primary{
-  background:#1a73e8; color:#fff; border:0;
-}
+
+/* жёстко перебиваем возможные поздние правила для баров */
+body.theme-dark .rag.progress .bar.green,
+body.dark       .rag.progress .bar.green{ background: var(--bar-green) !important; }
+
+body.theme-dark .rag.progress .bar.yellow,
+body.dark       .rag.progress .bar.yellow{ background: var(--bar-yellow) !important; }
+
+body.theme-dark .rag.progress .bar.red,
+body.dark       .rag.progress .bar.red{ background: var(--bar-red) !important; }
+
+body.theme-light .rag.progress .bar.green,
+body.light       .rag.progress .bar.green{ background: var(--bar-green) !important; }
+
+body.theme-light .rag.progress .bar.yellow,
+body.light       .rag.progress .bar.yellow{ background: var(--bar-yellow) !important; }
+
+body.theme-light .rag.progress .bar.red,
+body.light       .rag.progress .bar.red{ background: var(--bar-red) !important; }
