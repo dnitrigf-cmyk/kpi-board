@@ -115,6 +115,12 @@ function defaultBoard(){
 let __unsubRT = null;
 let __isLocalSave = false;
 
+// --- Save guards (anti-overwrite) ---
+let allowSaving = false;        // block saves until first remote load completes
+let hasRemoteSnapshot = false;  // set true after initial get from Firestore
+let lastSeenUpdatedAtMs = 0;    // last known cloud timestamp (ms since epoch)
+
+
 function migrateLegacyBoardFormat(board){
   board.rows.forEach(r=>{
     if (Array.isArray(r.values)){
@@ -203,12 +209,48 @@ function load(){
       const users = Object.keys(orgData.departments[currentDepartment].users);
       if (!users.length) orgData.departments[currentDepartment].users["User 1"] = { title:"", board: defaultBoard() };
       currentUser = Object.keys(orgData.departments[currentDepartment].users)[0];
-      monthPagerStart = firstOfMonth(new Date());
+      // Remember cloud timestamp to prevent overwriting newer data
+lastSeenUpdatedAtMs = (orgData && orgData.updatedAt && orgData.updatedAt.toMillis) ? orgData.updatedAt.toMillis() : 0;
+monthPagerStart = firstOfMonth(new Date());
 
-      // Синхронизируем текущее состояние в базу (единообразие)
-      save();
+      /* First remote sync completed: enable saving */
+hasRemoteSnapshot = true;
+allowSaving = true;
+
+      // Setup realtime subscription (safe, avoiding self-echo)
+      try {
+        const onSnap = window.__fbSnap;
+        if (typeof onSnap === 'function'){
+          if (__unsubRT) { try { __unsubRT(); } catch(_){} }
+          __unsubRT = onSnap(ref, (snap)=>{
+            if (!snap.exists()) return;
+            const data = snap.data();
+            const cloudMs = (data && data.updatedAt && data.updatedAt.toMillis) ? data.updatedAt.toMillis() : 0;
+
+            // Ignore echo immediately after our own save (single-next snapshot)
+            if (__isLocalSave){
+              __isLocalSave = false;
+              // still update our baseline timestamp
+              if (cloudMs) lastSeenUpdatedAtMs = cloudMs;
+              return;
+            }
+
+            // If cloud is newer -> accept and render
+            if (cloudMs >= lastSeenUpdatedAtMs){
+              orgData = data;
+              lastSeenUpdatedAtMs = cloudMs;
+              if (!allowSaving) allowSaving = true; // first snapshot unlocks saving
+              if (!hasRemoteSnapshot) hasRemoteSnapshot = true;
+              if (typeof renderAll === 'function') renderAll();
+            }
+          });
+        }
+      } catch(e){
+        console.warn('Realtime subscription init error:', e);
+      }
+
       resolve();
-    }
+}
 
     // ждём авторизацию, если её ещё нет
     if (FB_AUTH && FB_AUTH.currentUser) doLoad();
@@ -218,18 +260,67 @@ function load(){
     }
   });
 }
+
 function save(){
   try {
-    const FB_DB  = window.__FB_DB;
-    const docFn  = window.__fbDoc;
-    const setDoc = window.__fbSetDoc;
+    const FB_DB   = window.__FB_DB;
+    const docFn   = window.__fbDoc;
+    const getDoc  = window.__fbGetDoc;
+    const setDoc  = window.__fbSetDoc;
+    const serverTs = window.__fbServerTimestamp; // may be undefined if not wired
+    
+    // Guard: do not save until initial remote load finished
+    if (!allowSaving || !hasRemoteSnapshot){
+      console.warn('Save blocked: waiting for first remote load');
+      return;
+    }
+    
     const ref = docFn(FB_DB, 'shared', 'board');
-    __isLocalSave = true;
-    setDoc(ref, orgData);
+
+    // Optimistic concurrency: compare cloud updatedAt vs our lastSeenUpdatedAtMs
+    getDoc(ref).then((snapNow)=>{
+      const cloud = snapNow.exists() ? snapNow.data() : null;
+      const cloudMs = (cloud && cloud.updatedAt && cloud.updatedAt.toMillis) ? cloud.updatedAt.toMillis() : 0;
+
+      if (cloudMs > lastSeenUpdatedAtMs){
+        // Someone has newer data — do not overwrite, refresh UI instead
+        console.warn('Remote data is newer; aborting save and refreshing view.');
+        if (cloud){
+          orgData = cloud;
+          lastSeenUpdatedAtMs = cloudMs;
+          if (typeof renderAll === 'function') renderAll();
+          alert('Данные уже обновлены другим пользователем. Обновлено на экране, повторите своё изменение.');
+        }
+        return;
+      }
+
+      // Build payload with metadata
+      const updatedBy = (window.currentUserProfile?.email) || (window.__FB_AUTH?.currentUser?.uid) || 'unknown';
+      const payload = Object.assign({}, orgData, {
+        updatedAt: (typeof serverTs === 'function') ? serverTs() : new Date(),
+        updatedBy
+      });
+
+      __isLocalSave = true;
+      // Merge to avoid wiping unknown future fields
+      setDoc(ref, payload, { merge: true }).then(()=>{
+        // After successful save, bump our local timestamp baseline
+        lastSeenUpdatedAtMs = Date.now();
+      }).catch((e)=>{
+        console.error('Firestore save setDoc error:', e);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(orgData));
+      });
+    }).catch((err)=>{
+      console.error('Firestore getDoc error before save:', err);
+      // As a fallback (e.g., offline), keep local cache only; do not overwrite cloud blindly
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(orgData));
+    });
+
   } catch(err){
     console.error("Firestore save error:", err);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(orgData));
   }
+}
 }
 async function ensureUserFromProfile(){
   const prof = window.currentUserProfile;
