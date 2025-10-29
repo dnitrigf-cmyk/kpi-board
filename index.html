@@ -2,129 +2,102 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>KPI Board (Online Shared)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KPI Board</title>
   <link rel="stylesheet" href="styles.css" />
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#131722">
 </head>
+
+<!-- стартуем в тёмной -->
 <body class="theme-dark">
+  <header>
+    <h1>KPI Board</h1>
+    <span class="tag">Firebase Shared</span>
 
-<header>
-  <h1>KPI Board</h1>
-  <span class="tag">Firebase Shared</span>
+    <!-- переключатель темы -->
+    <button id="themeToggle" class="app-menu-btn" title="Switch theme">☀️ / 🌙</button>
+  </header>
 
-  <!-- === Кнопка переключения темы === -->
-  <button id="themeToggle" class="app-menu-btn" title="Switch theme">☀️ / 🌙</button>
-</header>
-
-<main>
-  <aside class="side">
-    <div class="group">
-      <button id="addKpi">Add KPI</button>
-      <button id="addWeek">Add Week</button>
-      <button id="delRow">Delete Row</button>
-    </div>
-  </aside>
-
-  <section class="grid-wrap">
-    <table id="kpiTable">
-      <thead>
-        <tr id="theadRow">
-          <th class="col-kpi">KPI name</th>
-          <th class="col-target">Target</th>
-        </tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
-
-    <footer class="usersbar">
-      <div id="users"></div>
-      <div class="addUser">
-        <input id="newUserName" placeholder="Add name..." />
-        <button id="addUser">+</button>
+  <main>
+    <aside class="side">
+      <div class="group">
+        <button>This department</button>
+        <button>All departments</button>
       </div>
-    </footer>
-  </section>
-</main>
+      <!-- список пользователей и их мини-прогресс -->
+      <div class="users-summary"></div>
+    </aside>
 
-<!-- ===== Firebase & Auth ===== -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } 
-    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc, onSnapshot, enableIndexedDbPersistence } 
-    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    <section class="grid-wrap">
+      <!-- стрелки-навигации -->
+      <div class="nav-arrows">
+        <button class="nav-btn" id="btnBackLevel" title="Back">←</button>
+        <button class="nav-btn" id="btnHome" title="Months">⌂</button>
+      </div>
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCb92dCbGD4H_YHPGt9SSPukDc7zlk9CpU",
-    authDomain: "kpi-board-139b1.firebaseapp.com",
-    projectId: "kpi-board-139b1",
-    storageBucket: "kpi-board-139b1.firebasestorage.app",
-    messagingSenderId: "805537122913",
-    appId: "1:805537122913:web:69457a3a36173f5720b820"
-  };
+      <!-- панель prev/next -->
+      <div class="head-controls">
+        <button class="hc-btn" id="hcPrev">←</button>
+        <div class="hc-spacer"></div>
+        <button class="hc-btn" id="hcNext">→</button>
+      </div>
 
-  const app  = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db   = getFirestore(app);
-  enableIndexedDbPersistence(db).catch(()=>{});
+      <!-- таблица KPI -->
+      <table>
+        <thead>
+          <tr id="theadRow">
+            <th style="min-width:240px;">KPI name</th>
+            <th style="min-width:150px;">Target</th>
+            <!-- динамические заголовки (месяцы/недели/дни) добавляются скриптом -->
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <!-- строки KPI добавляются скриптом -->
+        </tbody>
+      </table>
 
-  window.__FB_AUTH = auth;
-  window.__FB_DB   = db;
-  window.__fbDoc    = doc;
-  window.__fbGetDoc = getDoc;
-  window.__fbSetDoc = setDoc;
-  window.__fbSnap   = onSnapshot;
-  window.__fbLogout = async () => { try { await signOut(auth); } catch(e){ alert("Logout error: "+e.message); } };
+      <!-- нижняя панель с пользователями -->
+      <div class="usersbar">
+        <div id="users"></div>
+      </div>
+    </section>
+  </main>
 
-  onAuthStateChanged(auth, user=>{
-    window.dispatchEvent(new CustomEvent('fbAuthChanged',{detail:user||null}));
-  });
-</script>
+  <!-- корень всех модалок -->
+  <div id="modal-root"></div>
 
-<!-- ===== Тема + Приложение ===== -->
-<script>
-/* ===== THEME ENGINE ===== */
-(function(){
-  const KEY = 'kpi-theme';
-  const root = document.body;
-  const saved = localStorage.getItem(KEY) || 'dark';
-  root.classList.remove('theme-light','theme-dark');
-  root.classList.add(saved === 'light' ? 'theme-light' : 'theme-dark');
+  <!-- ===== THEME ENGINE (единственный скрипт переключения) ===== -->
+  <script>
+  (function(){
+    const KEY = 'kpi-theme';
+    const root = document.body;
 
-  window.toggleTheme = function(){
-    const next = root.classList.contains('theme-light') ? 'dark' : 'light';
+    // применяем сохранённую тему при загрузке
+    const saved = localStorage.getItem(KEY) || 'dark';
     root.classList.remove('theme-light','theme-dark');
-    root.classList.add(next === 'light' ? 'theme-light' : 'theme-dark');
-    localStorage.setItem(KEY, next);
-  };
-})();
+    root.classList.add(saved === 'light' ? 'theme-light' : 'theme-dark');
 
-// безопасное подключение кнопки
-(function bindThemeButton(){
-  function attach(){
-    const btn = document.getElementById('themeToggle');
-    if (btn && !btn.__themeBound){
-      btn.__themeBound = true;
-      btn.addEventListener('click', window.toggleTheme);
+    // доступна глобально при необходимости
+    window.toggleTheme = function(){
+      const next = root.classList.contains('theme-light') ? 'dark' : 'light';
+      root.classList.remove('theme-light','theme-dark');
+      root.classList.add(next === 'light' ? 'theme-light' : 'theme-dark');
+      localStorage.setItem(KEY, next);
+    };
+  })();
+
+  // навешиваем на кнопку и держим, даже если DOM перерисуется
+  (function bindThemeButton(){
+    function attach(){
+      const btn = document.getElementById('themeToggle');
+      if (btn && !btn.__themeBound){
+        btn.__themeBound = true;
+        btn.addEventListener('click', window.toggleTheme);
+      }
     }
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach);
-  else attach();
-  const mo = new MutationObserver(attach);
-  mo.observe(document.documentElement, {childList:true,subtree:true});
-})();
-</script>
-
-<script src="app.js"></script>
-
-<script>
-  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-    navigator.serviceWorker.register('./sw.js').catch(console.error);
-  }
-</script>
-
-  
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach);
+    else attach();
+    new MutationObserver(attach).observe(document.documentElement, {childList:true,subtree:true});
+  })();
+  </script>
 </body>
 </html>
