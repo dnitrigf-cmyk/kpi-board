@@ -4,7 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>KPI Board</title>
-  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Антикэш, чтобы подтянулись свежие стили -->
+  <link rel="stylesheet" href="styles.css?v=2025-10-29-2" />
 </head>
 
 <!-- стартуем в тёмной теме -->
@@ -65,7 +67,7 @@
   <!-- корень всех модалок -->
   <div id="modal-root"></div>
 
-  <!-- ===== THEME ENGINE (минимальный и изолированный) ===== -->
+  <!-- ===== THEME ENGINE (изолированный скрипт переключения темы) ===== -->
   <script>
   (function(){
     const KEY = 'kpi-theme';
@@ -73,19 +75,19 @@
 
     // применяем сохранённую тему при загрузке
     const saved = localStorage.getItem(KEY) || 'dark';
-    root.classList.remove('theme-light','theme-dark');
+    root.classList.remove('theme-light','theme-dark','light','dark');
     root.classList.add(saved === 'light' ? 'theme-light' : 'theme-dark');
 
-    // доступна глобально при необходимости
+    // глобальная функция для кнопки
     window.toggleTheme = function(){
-      const next = root.classList.contains('theme-light') ? 'dark' : 'light';
-      root.classList.remove('theme-light','theme-dark');
-      root.classList.add(next === 'light' ? 'theme-light' : 'theme-dark');
-      localStorage.setItem(KEY, next);
+      const toLight = root.classList.contains('theme-dark') || root.classList.contains('dark');
+      root.classList.remove('theme-light','theme-dark','light','dark');
+      root.classList.add(toLight ? 'theme-light' : 'theme-dark');
+      localStorage.setItem(KEY, toLight ? 'light' : 'dark');
     };
   })();
 
-  // навешиваем на кнопку и держим, даже если DOM перерисуется
+  // навешиваем обработчик на кнопку и переустанавливаем при изменениях DOM
   (function bindThemeButton(){
     function attach(){
       const btn = document.getElementById('themeToggle');
@@ -100,6 +102,7 @@
   })();
   </script>
 
-  <script defer src="app.js"></script>
+  <!-- твой основной JS (оставляй как есть) -->
+  <script defer src="app.js?v=2025-10-29-2"></script>
 </body>
 </html>
