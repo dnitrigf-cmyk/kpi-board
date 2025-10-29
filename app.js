@@ -504,7 +504,7 @@ function makeEditableDate(cell, row, dateKey){
   input.addEventListener("blur", saveAndRerender);
 }
 
-// ---------- Inline rename KPI ----------
+// ---------- Inline rename KPI (исправлена рекурсия) ----------
 function inlineRenameRowCell(cellEl, rIdx){
   const row = orgData.departments[currentDepartment].users[currentUser].board.rows[rIdx];
   if (cellEl.querySelector("input.inline-input")) return;
@@ -514,10 +514,19 @@ function inlineRenameRowCell(cellEl, rIdx){
   input.type = "text"; input.value = oldVal; input.className = "inline-input";
   cellEl.innerHTML = ""; cellEl.appendChild(input);
   input.focus(); input.select();
+
   const cancel = () => { row.name = oldVal; renderTable(); };
-  const save = () => { const v = input.value.trim(); if (v) row.name = v; save(); renderTable(); };
-  input.addEventListener("keydown", (e)=>{ if (e.key==="Enter") save(); else if (e.key==="Escape") cancel(); });
-  input.addEventListener("blur", save);
+
+  // ВАЖНО: не перекрываем глобальную save()
+  const commit = () => {
+    const v = input.value.trim();
+    if (v) row.name = v;
+    save();
+    renderTable();
+  };
+
+  input.addEventListener("keydown", (e)=>{ if (e.key==="Enter") commit(); else if (e.key==="Escape") cancel(); });
+  input.addEventListener("blur", commit);
 }
 
 // ---------- Context menu ----------
