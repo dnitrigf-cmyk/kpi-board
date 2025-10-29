@@ -1,118 +1,197 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>KPI Board</title>
-  <link rel="stylesheet" href="styles.css?v=fix-hard-1" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#131722" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
-
-<body class="theme-light"><!-- можно theme-dark -->
+<body>
   <header>
     <h1>KPI Board</h1>
-    <span class="tag">Firebase Shared</span>
-    <button id="themeToggle" class="app-menu-btn" title="Switch theme">☀️ / 🌙</button>
   </header>
 
   <main>
     <aside class="side">
       <div class="group">
-        <button>This department</button>
-        <button>All departments</button>
+        <button id="addKpi">Добавить KPI</button>
+        <button id="addWeek">Добавить неделю</button>
+        <button id="delRow">Удалить строку</button>
       </div>
-      <div class="users-summary"></div>
     </aside>
 
     <section class="grid-wrap">
-      <div class="nav-arrows">
-        <button class="nav-btn" id="btnBackLevel" title="Back">←</button>
-        <button class="nav-btn" id="btnHome" title="Months">⌂</button>
-      </div>
-
-      <div class="head-controls">
-        <button class="hc-btn" id="hcPrev">←</button>
-        <div class="hc-spacer"></div>
-        <button class="hc-btn" id="hcNext">→</button>
-      </div>
-
-      <table>
+      <table id="kpiTable">
         <thead>
           <tr id="theadRow">
-            <th style="min-width:240px;">KPI name</th>
-            <th style="min-width:150px;">Target</th>
+            <th class="col-kpi">KPI name</th>
+            <th class="col-target">Target</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
       </table>
 
-      <div class="usersbar">
+      <footer class="usersbar">
         <div id="users"></div>
-      </div>
+        <div class="addUser">
+          <input id="newUserName" placeholder="Добавить имя..." />
+          <button id="addUser">+</button>
+        </div>
+      </footer>
     </section>
   </main>
 
-  <div id="modal-root"></div>
+  <!-- ==== Firebase + Auth + Firestore ==== -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import {
+      getAuth, onAuthStateChanged, signInWithEmailAndPassword,
+      createUserWithEmailAndPassword, signOut
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import {
+      getFirestore, doc, getDoc, setDoc, onSnapshot, enableIndexedDbPersistence
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  <!-- Theme engine -->
-  <script>
-  (function(){
-    const KEY = 'kpi-theme';
-    const root = document.body;
-    function apply(theme){
-      root.classList.remove('theme-light','theme-dark','light','dark');
-      root.classList.add(theme === 'light' ? 'theme-light' : 'theme-dark');
-      localStorage.setItem(KEY, theme);
-    }
-    apply(localStorage.getItem(KEY) || (root.classList.contains('theme-dark') ? 'dark' : 'light'));
-    window.toggleTheme = function(){
-      apply(root.classList.contains('theme-light') ? 'dark' : 'light');
+    const firebaseConfig = {
+      apiKey: "AIzaSyCb92dCbGD4H_YHPGt9SSPukDc7zlk9CpU",
+      authDomain: "kpi-board-139b1.firebaseapp.com",
+      projectId: "kpi-board-139b1",
+      storageBucket: "kpi-board-139b1.firebasestorage.app",
+      messagingSenderId: "805537122913",
+      appId: "1:805537122913:web:69457a3a36173f5720b820"
     };
-    const attach = () => {
-      const btn = document.getElementById('themeToggle');
-      if (btn && !btn.__bound){ btn.__bound = true; btn.addEventListener('click', window.toggleTheme); }
+
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    enableIndexedDbPersistence(db).catch((err) => {
+      console.warn("Persistence unavailable:", err);
+    });
+
+    // --- Определяем роли ---
+    const DEPARTMENTS = [ "Administration", "Accounting", "Dispatching" ];
+    const POSITIONS_BY_DEPT = {
+      "Administration": [
+        "Director","Team Leader","Driver Evaluator","Capacity Planner","Driver Manager","Driver Administrator"
+      ],
+      "Accounting": ["Team Leader","Manager","Payroll"],
+      "Dispatching": ["Team Leader","Dispo FTL","Dispo XTL/ODC"]
     };
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach); else attach();
-    new MutationObserver(attach).observe(document.documentElement, {childList:true,subtree:true});
-  })();
-  </script>
+    const DIRECTOR_POSITIONS = ["Director"];
+    const LEADER_POSITIONS   = ["Team Leader"];
 
-  <!-- твой основной JS -->
-  <script defer src="app.js?v=fix-hard-1"></script>
+    function roleFromPosition(position){
+      if (DIRECTOR_POSITIONS.includes(position)) return "director";
+      if (LEADER_POSITIONS.includes(position))   return "leader";
+      return "member";
+    }
 
-  <!-- ==== PATCH: принудительный инлайн-цвет баров из CSS-переменных темы ==== -->
-  <script>
-  (function(){
-    function cssVar(name){
-      return getComputedStyle(document.body).getPropertyValue(name).trim();
-    }
-    function colorFromPercent(p){
-      if (p >= 80) return cssVar('--bar-green');
-      if (p >= 60) return cssVar('--bar-yellow');
-      return cssVar('--bar-red');
-    }
-    // перехватываем существующие функции и дописываем им инлайн-цвет
-    const _make = window.makeProgress;
-    if (typeof _make === 'function'){
-      window.makeProgress = function(v){
-        const el = _make(v);
-        const pct = el.querySelector('.pct')?.textContent || '';
-        const n = parseFloat(pct.replace('%','')) || null;
-        const bar = el.querySelector('.bar');
-        if (bar && n != null) bar.style.background = colorFromPercent(n);
-        return el;
+    window.__FB_AUTH = auth;
+    window.__FB_DB   = db;
+    window.__fbDoc    = doc;
+    window.__fbGetDoc = getDoc;
+    window.__fbSetDoc = setDoc;
+    window.__fbSnap   = onSnapshot;
+    window.__fbLogout = async () => { try { await signOut(auth); } catch(e){ alert("Logout error: "+e.message); } };
+
+    // ==== Login/Register UI ====
+    window.showLoginScreen = function(){
+      if (document.querySelector('#authBox')) return;
+      const box = document.createElement('div');
+      box.id = 'authBox';
+      box.style = "position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:10000;background:rgba(0,0,0,0.7)";
+      box.innerHTML = `
+        <div style="width:440px;background:#10151d;border-radius:12px;padding:20px;color:#eee;box-shadow:0 0 20px rgba(0,0,0,0.5)">
+          <h3>KPI Board — Login / Register</h3>
+          <input id="authFirst"  type="text" placeholder="First name" style="width:100%;margin-top:5px;padding:8px;border-radius:8px;background:#0f1824;border:1px solid #333;color:#eee"/>
+          <input id="authLast"   type="text" placeholder="Last name"  style="width:100%;margin-top:5px;padding:8px;border-radius:8px;background:#0f1824;border:1px solid #333;color:#eee"/>
+          <select id="authDept"  style="width:100%;margin-top:5px;padding:8px;border-radius:8px;background:#0f1824;border:1px solid #333;color:#eee"></select>
+          <select id="authPos"   style="width:100%;margin-top:5px;padding:8px;border-radius:8px;background:#0f1824;border:1px solid #333;color:#eee"></select>
+          <input id="authEmail"  type="email" placeholder="Email"     style="width:100%;margin-top:5px;padding:8px;border-radius:8px;background:#0f1824;border:1px solid #333;color:#eee"/>
+          <input id="authPass"   type="password" placeholder="Password" style="width:100%;margin-top:5px;padding:8px;border-radius:8px;background:#0f1824;border:1px solid #333;color:#eee"/>
+          <div style="display:flex;justify-content:space-between;margin-top:10px">
+            <button id="btnLogin">Login</button>
+            <button id="btnRegister">Register</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(box);
+
+      const selDept = box.querySelector("#authDept");
+      const selPos  = box.querySelector("#authPos");
+      selDept.innerHTML = `<option value="" disabled selected>Select department</option>` +
+        DEPARTMENTS.map(d => `<option value="${d}">${d}</option>`).join("");
+      selPos.innerHTML = `<option value="" disabled selected>Select position</option>`;
+      selDept.onchange = () => {
+        const list = POSITIONS_BY_DEPT[selDept.value] || [];
+        selPos.innerHTML = `<option value="" disabled selected>Select position</option>` +
+          list.map(p => `<option value="${p}">${p}</option>`).join("");
+      };
+
+      // Register
+      box.querySelector("#btnRegister").onclick = async () => {
+        const first = box.querySelector("#authFirst").value.trim();
+        const last  = box.querySelector("#authLast").value.trim();
+        const dept  = selDept.value;
+        const pos   = selPos.value;
+        const email = box.querySelector("#authEmail").value.trim();
+        const pass  = box.querySelector("#authPass").value;
+        if (!first || !last || !dept || !pos || !email || !pass) { alert("Fill all fields"); return; }
+
+        try {
+          const cred = await createUserWithEmailAndPassword(auth, email, pass);
+          const uid = cred.user.uid;
+          const displayName = `${first} ${last}`;
+          const role = roleFromPosition(pos);
+          await setDoc(doc(db, "users", uid), { displayName, email, department: dept, position: pos, role });
+          window.currentUserProfile = { displayName, email, department: dept, position: pos, role };
+          window.hideLoginScreen && window.hideLoginScreen();
+          window.dispatchEvent(new CustomEvent('fbAuthChanged', { detail: auth.currentUser }));
+        } catch(err) {
+          alert("Ошибка регистрации: " + err.message);
+        }
+      };
+
+      // Login
+      box.querySelector("#btnLogin").onclick = async () => {
+        const email = box.querySelector("#authEmail").value.trim();
+        const pass  = box.querySelector("#authPass").value;
+        try {
+          const cred = await signInWithEmailAndPassword(auth, email, pass);
+          const snap = await getDoc(doc(db, "users", cred.user.uid));
+          if (snap.exists()) window.currentUserProfile = snap.data();
+          window.hideLoginScreen && window.hideLoginScreen();
+          window.dispatchEvent(new CustomEvent('fbAuthChanged', { detail: auth.currentUser }));
+        } catch(err) {
+          alert("Ошибка входа: " + err.message);
+        }
+      };
+    };
+
+    window.hideLoginScreen = () => { const el = document.querySelector("#authBox"); if (el) el.remove(); };
+
+    async function loadUserProfile(uid){
+      try {
+        const snap = await getDoc(doc(db, "users", uid));
+        if (snap.exists()) window.currentUserProfile = snap.data();
+        else window.currentUserProfile = null;
+      } catch(e) {
+        console.error("Ошибка загрузки профиля:", e);
+        window.currentUserProfile = null;
       }
     }
-    const _paint = window.paintCellProgress;
-    if (typeof _paint === 'function'){
-      window.paintCellProgress = function(container, v){
-        _paint(container, v);
-        const pct = container.querySelector('.pct')?.textContent || '';
-        const n = parseFloat(pct.replace('%','')) || null;
-        const bar = container.querySelector('.bar');
-        if (bar && n != null) bar.style.background = colorFromPercent(n);
-      }
-    }
-  })();
+
+    onAuthStateChanged(auth, async (user)=>{
+      if (user) await loadUserProfile(user.uid);
+      else window.currentUserProfile = null;
+      window.dispatchEvent(new CustomEvent('fbAuthChanged', { detail: user || null }));
+    });
   </script>
+
+  <!-- Основной JS -->
+  <script src="app.js"></script>
 </body>
 </html>
