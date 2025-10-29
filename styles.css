@@ -1,233 +1,123 @@
 /* =========================
    THEME TOKENS
    ========================= */
-
-/* DARK */
 body.theme-dark{
-  --bg:#0c1118;
-  --card:#0f1620;
-  --card-2:#111a26;
-  --head:#121a27;
-  --text:#e8eef5;
-  --muted:#8ea0b6;
-  --border:#1e2a3b;
-
-  /* индикаторы (заметные) */
-  --bar-green:#19c37d;
-  --bar-yellow:#ffcf4d;
-  --bar-red:#ff6b81;
-
-  --track:#141c29;
-  --shadow:0 8px 22px rgba(0,0,0,.35);
-
-  --btn-ghost:#101a28;
-  --btn-ghost-hover:#182439;
-
-  --ctx-bg:#0f1824;
-
-  --scroll-track:#0f1620;
-  --scroll-thumb:#1b2738;
+  --bg:#0c1118; --card:#0f1620; --card-2:#111a26; --head:#121a27;
+  --text:#e8eef5; --muted:#8ea0b6; --border:#1e2a3b;
+  --bar-green:#19c37d; --bar-yellow:#ffcf4d; --bar-red:#ff6b81;
+  --track:#141c29; --shadow:0 8px 22px rgba(0,0,0,.35);
+  --btn-ghost:#101a28; --btn-ghost-hover:#182439; --ctx-bg:#0f1824;
+  --scroll-track:#0f1620; --scroll-thumb:#1b2738;
 }
-
-/* LIGHT */
 body.theme-light{
-  --bg:#f6f7fb;
-  --card:#ffffff;
-  --card-2:#f2f4f8;
-  --head:#ffffff;
-  --text:#1c2430;
-  --muted:#5b6b82;
-  --border:#dee3ea;
-
-  --bar-green:#16a775;
-  --bar-yellow:#e2b321;
-  --bar-red:#e55367;
-
-  --track:#eef2f7;
-  --shadow:0 8px 22px rgba(14,30,62,.10);
-
-  --btn-ghost:#eef3fb;
-  --btn-ghost-hover:#e5eefc;
-
-  --ctx-bg:#ffffff;
-
-  --scroll-track:#e9eef6;
-  --scroll-thumb:#cfd8e3;
+  --bg:#f6f7fb; --card:#fff; --card-2:#f2f4f8; --head:#fff;
+  --text:#1c2430; --muted:#5b6b82; --border:#dee3ea;
+  --bar-green:#16a775; --bar-yellow:#e2b321; --bar-red:#e55367;
+  --track:#eef2f7; --shadow:0 8px 22px rgba(14,30,62,.10);
+  --btn-ghost:#eef3fb; --btn-ghost-hover:#e5eefc; --ctx-bg:#fff;
+  --scroll-track:#e9eef6; --scroll-thumb:#cfd8e3;
 }
 
-/* поддержка старых классов .dark/.light — на всякий случай */
-body.dark  { composes: theme-dark; }
-body.light { composes: theme-light; }
+/* поддержка старых классов на всякий */
+body.dark  { background:var(--bg); }
+body.light { background:var(--bg); }
 
 /* =========================
-   BASE / LAYOUT
+   БАЗА / ЛЕЙАУТ
    ========================= */
 *{box-sizing:border-box}
 html,body{height:100%}
-body{
-  margin:0;
-  background:var(--bg);
-  color:var(--text);
-  font:14px/1.45 Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;
-}
-header{
-  display:flex; align-items:center; gap:10px;
-  padding:12px 16px;
-  background:var(--head); border-bottom:1px solid var(--border);
-}
-header h1{margin:0;font-size:16px;font-weight:700;color:var(--text)}
-.tag{
-  border:1px solid #d4af37; color:#d4af37;
-  border-radius:10px; padding:2px 8px; font-size:12px;
-}
-.app-menu-btn{
-  margin-left:auto;
-  background:var(--btn-ghost); border:1px solid var(--border);
-  color:var(--text); border-radius:10px;
-  padding:6px 12px; cursor:pointer;
-}
+body{ margin:0; background:var(--bg); color:var(--text); font:14px/1.45 Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif; }
+
+header{ display:flex; align-items:center; gap:10px; padding:12px 16px; background:var(--head); border-bottom:1px solid var(--border); }
+header h1{ margin:0; font-size:16px; font-weight:700; color:var(--text); }
+.tag{ border:1px solid #d4af37; color:#d4af37; border-radius:10px; padding:2px 8px; font-size:12px; }
+.app-menu-btn{ margin-left:auto; background:var(--btn-ghost); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:6px 12px; cursor:pointer; }
 .app-menu-btn:hover{ background:var(--btn-ghost-hover); }
 
-main{display:flex; gap:16px; padding:16px}
-.side{
-  width:260px; background:var(--card);
-  border:1px solid var(--border); border-radius:14px;
-  padding:12px; box-shadow:var(--shadow);
-}
-.side .group{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px}
-.side button{
-  background:var(--card-2); border:1px solid var(--border);
-  color:var(--text); padding:8px 10px; border-radius:10px; cursor:pointer;
-}
-.side button:hover{border-color:#34465f}
+main{ display:flex; gap:16px; padding:16px; }
+.side{ width:260px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px; box-shadow:var(--shadow); }
+.side .group{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+.side button{ background:var(--card-2); border:1px solid var(--border); color:var(--text); padding:8px 10px; border-radius:10px; cursor:pointer; }
+.side button:hover{ border-color:#34465f; }
 
-.grid-wrap{
-  flex:1; background:var(--card);
-  border:1px solid var(--border); border-radius:16px;
-  overflow:auto; box-shadow:var(--shadow); position:relative;
-}
+.grid-wrap{ flex:1; background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:auto; box-shadow:var(--shadow); position:relative; }
 
-.head-controls{
-  position:sticky; top:0; z-index:6;
-  display:flex; align-items:center; gap:8px;
-  padding:8px 12px 6px;
-  background:var(--head);
-  border-bottom:1px solid var(--border);
-  backdrop-filter: blur(4px);
-}
-.hc-spacer{flex:1}
-.hc-btn{
-  background:var(--btn-ghost); border:1px solid var(--border);
-  color:var(--text); border-radius:10px; padding:6px 12px; cursor:pointer;
-}
+.head-controls{ position:sticky; top:0; z-index:6; display:flex; align-items:center; gap:8px; padding:8px 12px 6px; background:var(--head); border-bottom:1px solid var(--border); backdrop-filter: blur(4px); }
+.hc-spacer{ flex:1; }
+.hc-btn{ background:var(--btn-ghost); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:6px 12px; cursor:pointer; }
 .hc-btn:hover{ background:var(--btn-ghost-hover); }
 
-table{border-collapse:separate; border-spacing:0; width:100%}
-thead th{
-  position:sticky; top:0; z-index:3;
-  background:var(--card-2);
-  color:var(--muted); font-weight:600; font-size:12px;
-  text-align:left; padding:12px 14px; border-bottom:1px solid var(--border);
-}
+table{ border-collapse:separate; border-spacing:0; width:100%; }
+thead th{ position:sticky; top:0; z-index:3; background:var(--card-2); color:var(--muted); font-weight:600; font-size:12px; text-align:left; padding:12px 14px; border-bottom:1px solid var(--border); }
 tbody th, tbody td{ padding:10px 12px; border-bottom:1px solid var(--border); }
-tbody tr:nth-child(odd){background:var(--card)}
-tbody tr:nth-child(even){background:var(--card-2)}
-tbody tr:hover{background:rgba(0,0,0,.03)}
+tbody tr:nth-child(odd){ background:var(--card); }
+tbody tr:nth-child(even){ background:var(--card-2); }
+tbody tr:hover{ background:rgba(0,0,0,.03); }
+.col-kpi{ min-width:240px; }
+.col-target{ min-width:150px; }
+.cell{ min-width:120px; text-align:center; }
 
-.col-kpi{min-width:240px}
-.col-target{min-width:150px}
-.cell{min-width:120px; text-align:center}
-
-.clickable{
-  position:relative; border-radius:10px; cursor:pointer;
-  transition:transform .08s ease, box-shadow .12s ease, background .12s ease;
-  padding:8px 10px !important; margin:6px !important;
-  text-align:center; background:rgba(0,0,0,.02); border:1px solid var(--border);
-}
-.clickable:hover{
-  background:rgba(0,0,0,.04);
-  box-shadow:0 2px 10px rgba(0,0,0,.08), inset 0 0 0 1px rgba(255,255,255,.03);
-  transform:translateY(-1px);
-}
+.clickable{ position:relative; border-radius:10px; cursor:pointer; transition:transform .08s ease, box-shadow .12s ease, background .12s ease; padding:8px 10px !important; margin:6px !important; text-align:center; background:rgba(0,0,0,.02); border:1px solid var(--border); }
+.clickable:hover{ background:rgba(0,0,0,.04); box-shadow:0 2px 10px rgba(0,0,0,.08), inset 0 0 0 1px rgba(255,255,255,.03); transform:translateY(-1px); }
 
 /* =========================
-   KPI PROGRESS
+   KPI PROGRESS — ПОЛНЫЕ ПЕРЕОПРЕДЕЛЕНИЯ
    ========================= */
 .rag.progress{
   position:relative; height:32px; border-radius:10px;
-  background:var(--track); border:1px solid var(--border);
+  background:var(--track) !important; border:1px solid var(--border) !important;
   overflow:hidden; display:flex; align-items:center; justify-content:center;
-  /* удаляем любые чужие фильтры */
-  filter:none !important;
+  box-shadow:none !important; filter:none !important; mix-blend-mode:normal !important;
 }
 .rag.progress .bar{
-  position:absolute; inset:0 auto 0 0;
-  width:0%; transition:width .2s ease;
-  /* убираем псевдоэлементы/тени чужих библиотек */
-}
-.rag.progress .bar::before,
-.rag.progress .bar::after{
-  content:none !important;
+  position:absolute; left:0; top:0; bottom:0; width:0%;
+  transition:width .2s ease;
+  /* обнуляем все возможные наследованные стили */
+  background:transparent !important;
+  background-image:none !important;
   box-shadow:none !important;
-  background:none !important;
+  filter:none !important;
+  mix-blend-mode:normal !important;
+  opacity:1 !important;
 }
+.rag.progress .bar.green  { background: var(--bar-green) !important; }
+.rag.progress .bar.yellow { background: var(--bar-yellow) !important; }
+.rag.progress .bar.red    { background: var(--bar-red) !important; }
+.rag.progress .bar.gray   { background: rgba(0,0,0,.15) !important; }
 
-/* СИЛЬНЫЕ переопределения цветов именно в таблице (увеличенная специфичность) */
-.grid-wrap .rag.progress .bar.green  { background: var(--bar-green) !important; }
-.grid-wrap .rag.progress .bar.yellow { background: var(--bar-yellow) !important; }
-.grid-wrap .rag.progress .bar.red    { background: var(--bar-red) !important; }
-.grid-wrap .rag.progress .bar.gray   { background: rgba(255,255,255,.35) !important; }
+.rag.progress .bar::before,
+.rag.progress .bar::after{ content:none !important; }
 
 .rag.progress .pct{
   position:relative; z-index:1; font-weight:700;
+  background:transparent !important; /* убираем «плашку» за текстом */
+  box-shadow:none !important;
 }
 body.theme-dark .rag.progress .pct{ color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.6); }
 body.theme-light .rag.progress .pct{ color:#0b1220; text-shadow:none; }
 
 /* =========================
-   INLINE EDIT / USERS BAR / MISC (как было)
+   Прочее
    ========================= */
 .editable{ cursor: context-menu; }
 .editable:hover{ background:rgba(0,0,0,.03) }
-.inline-input{
-  width:100%; padding:8px 10px; border-radius:10px;
-  border:1px solid var(--border); background:#fff; color:var(--text);
-  outline:none; font:inherit; text-align:center;
-}
+.inline-input{ width:100%; padding:8px 10px; border-radius:10px; border:1px solid var(--border); background:#fff; color:var(--text); outline:none; font:inherit; text-align:center; }
 .inline-input:focus{ border-color:#9bb1cc; background:#fff }
 body.theme-dark .inline-input{ background:#0f1620; color:var(--text); border-color:#2a3a50; }
 
-.usersbar{
-  position:sticky; bottom:0; left:0; right:0;
-  display:flex; justify-content:space-between; align-items:center; gap:10px;
-  padding:10px 12px; background:var(--head); border-top:1px solid var(--border);
-  border-bottom-left-radius:16px; border-bottom-right-radius:16px;
-}
-#users{display:flex; gap:6px; flex-wrap:wrap}
-.userBtn{
-  background:var(--btn-ghost); border:1px solid var(--border); color:var(--text);
-  border-radius:999px; padding:6px 12px; font-size:13px; cursor:pointer; transition:all .15s ease;
-}
+.usersbar{ position:sticky; bottom:0; left:0; right:0; display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; background:var(--head); border-top:1px solid var(--border); border-bottom-left-radius:16px; border-bottom-right-radius:16px; }
+#users{ display:flex; gap:6px; flex-wrap:wrap; }
+.userBtn{ background:var(--btn-ghost); border:1px solid var(--border); color:var(--text); border-radius:999px; padding:6px 12px; font-size:13px; cursor:pointer; transition:all .15s ease; }
 .userBtn.active{ background:#1a73e8; border-color:transparent; color:#fff; }
 
-#addUser, #newUserName, #addKpi, .addUser { display:none !important; }
+#addUser, #newUserName, #addKpi, .addUser{ display:none !important; }
 
-.nav-arrows{
-  position:sticky; top:0; z-index:5;
-  display:flex; gap:8px; justify-content:flex-end; padding:8px 12px 0;
-}
-.nav-btn{
-  background:var(--btn-ghost); border:1px solid var(--border);
-  color:var(--text); border-radius:10px; padding:6px 10px; cursor:pointer;
-}
+.nav-arrows{ position:sticky; top:0; z-index:5; display:flex; gap:8px; justify-content:flex-end; padding:8px 12px 0; }
+.nav-btn{ background:var(--btn-ghost); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:6px 10px; cursor:pointer; }
 .nav-btn:hover{ background:var(--btn-ghost-hover); }
 
-.ctx-menu{
-  position:fixed; min-width:160px; z-index:9999; display:none;
-  background:var(--ctx-bg); color:var(--text);
-  border:1px solid var(--border); border-radius:10px; padding:6px;
-  box-shadow:0 12px 30px rgba(14,30,62,.18);
-}
+.ctx-menu{ position:fixed; min-width:160px; z-index:9999; display:none; background:var(--ctx-bg); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:6px; box-shadow:0 12px 30px rgba(14,30,62,.18); }
 .ctx-item{ padding:8px 10px; border-radius:8px; cursor:pointer; user-select:none; }
 body.theme-dark .ctx-item:hover{ background:rgba(255,255,255,.06); }
 body.theme-light .ctx-item:hover{ background:#f3f6fb; }
@@ -236,44 +126,23 @@ body.theme-light .ctx-item.danger:hover{ background:#fdecec; }
 body.theme-dark .ctx-item.danger:hover{ background:rgba(255,0,0,.08); }
 
 .grid-wrap::-webkit-scrollbar{ height:10px; width:10px; }
-.grid-wrap::-webkit-scrollbar-thumb{
-  background: var(--scroll-thumb); border-radius:10px; border:2px solid var(--scroll-track);
-}
-.grid-wrap::-webkit-scrollbar-track{ background: var(--scroll-track); }
+.grid-wrap::-webkit-scrollbar-thumb{ background:var(--scroll-thumb); border-radius:10px; border:2px solid var(--scroll-track); }
+.grid-wrap::-webkit-scrollbar-track{ background:var(--scroll-track); }
 
-/* =========================
-   МОДАЛКИ
-   ========================= */
 #modal-root{ position:fixed; inset:0; z-index:10000; display:none; }
 .modal-overlay{ position:absolute; inset:0; background:rgba(9,15,25,.25); backdrop-filter: blur(2px); }
-.modal-card{
-  position:absolute; left:50%; top:50%; transform: translate(-50%,-50%);
-  width:min(480px, calc(100% - 32px));
-  background:var(--card); border:1px solid var(--border); border-radius:16px;
-  box-shadow:0 20px 60px rgba(14,30,62,.18); overflow:hidden; animation: modalIn .12s ease-out;
-}
+.modal-card{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(480px, calc(100% - 32px)); background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:0 20px 60px rgba(14,30,62,.18); overflow:hidden; animation: modalIn .12s ease-out; }
 @keyframes modalIn{ from{ transform:translate(-50%,-48%) scale(.98); opacity:0 } to{ transform:translate(-50%,-50%) scale(1); opacity:1 } }
 .modal-card.shake{ animation: shake .18s linear; }
 @keyframes shake{ 0%{transform:translate(-50%,-50%)} 25%{transform:translate(calc(-50% - 6px),-50%)} 50%{transform:translate(-50%,-50%)} 75%{transform:translate(calc(-50% + 6px),-50%)} 100%{transform:translate(-50%,-50%)} }
-.modal-header{
-  display:flex; align-items:center; gap:10px; padding:12px 14px; background:var(--head); border-bottom:1px solid var(--border);
-}
+.modal-header{ display:flex; align-items:center; gap:10px; padding:12px 14px; background:var(--head); border-bottom:1px solid var(--border); }
 .modal-header h3{ margin:0; font-size:15px; font-weight:700; color:var(--text); }
-.modal-x{
-  margin-left:auto; background:transparent; border:1px solid var(--border);
-  color:var(--text); border-radius:10px; width:32px; height:28px; cursor:pointer;
-}
+.modal-x{ margin-left:auto; background:transparent; border:1px solid var(--border); color:var(--text); border-radius:10px; width:32px; height:28px; cursor:pointer; }
 .modal-x:hover{ background:var(--btn-ghost-hover); }
 .modal-body{ padding:14px; }
 .modal-label{ display:block; margin-bottom:6px; color:var(--muted); font-size:12px; }
-.modal-input{
-  width:100%; padding:10px 12px; border-radius:10px;
-  border:1px solid var(--border); background:#fff; color:var(--text); outline:none; font:inherit;
-}
+.modal-input{ width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#fff; color:var(--text); outline:none; font:inherit; }
 .modal-input:focus{ border-color:#9bb1cc; }
 .modal-hint{ margin:6px 2px 0; color:var(--muted); font-size:12px; }
-.modal-error{
-  margin:8px 2px 0; color:#b42318; font-size:12px;
-  background:#fdecec; border:1px solid #f3b2b0; padding:6px 8px; border-radius:8px;
-}
+.modal-error{ margin:8px 2px 0; color:#b42318; font-size:12px; background:#fdecec; border:1px solid #f3b2b0; padding:6px 8px; border-radius:8px; }
 body.theme-dark .modal-input{ background:#0f1620; color:var(--text); border-color:#2a3a50; }
