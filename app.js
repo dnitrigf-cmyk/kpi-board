@@ -1,10 +1,11 @@
 /* =========================
-   KPI Board — Multi-user Offline (v13)
-   - Department chips inline (no plus chip)
-   - Header menu ≡ forced to far right
+   KPI Board — Online Shared (v13+Firebase)
+   - Общая база Firestore: collection 'shared', doc 'board'
+   - Email/Password Auth (Firebase)
+   - Department chips inline
+   - Header menu ≡ forced to far right (+ Logout)
    - Rename User via modal (edit Name + Position)
    - Users store { title, board }
-   - All features from v12 preserved
    ========================= */
 
 const STORAGE_KEY = "kpi-multiuser-v7";
@@ -110,6 +111,10 @@ function defaultBoard(){
     ]
   };
 }
+// ---------- Firestore realtime globals ----------
+let __unsubRT = null;
+let __isLocalSave = false;
+
 function migrateLegacyBoardFormat(board){
   board.rows.forEach(r=>{
     if (Array.isArray(r.values)){
@@ -159,19 +164,157 @@ function migrateIfNeeded(raw){
   }
   return data;
 }
+
+/* ========= Firestore SHARED storage (общая база) ========= */
 function load(){
-  const s = localStorage.getItem(STORAGE_KEY);
-  if (s) { try { orgData = migrateIfNeeded(JSON.parse(s)); } catch { orgData = {departments:{}}; } }
-  if (!Object.keys(orgData.departments).length){
-    orgData.departments["General"] = { users: { "User 1": { title:"", board: defaultBoard() } } };
-  }
-  currentDepartment = Object.keys(orgData.departments)[0];
-  const users = Object.keys(orgData.departments[currentDepartment].users);
-  if (!users.length) orgData.departments[currentDepartment].users["User 1"] = { title:"", board: defaultBoard() };
-  currentUser = Object.keys(orgData.departments[currentDepartment].users)[0];
-  monthPagerStart = firstOfMonth(new Date());
+  const FB_AUTH = window.__FB_AUTH;
+  const FB_DB   = window.__FB_DB;
+  const docFn   = window.__fbDoc;
+  const getDoc  = window.__fbGetDoc;
+  const setDoc  = window.__fbSetDoc;
+
+  const SHARED_COLL = 'shared';
+  const SHARED_DOC  = 'board';
+
+  return new Promise((resolve) => {
+    async function doLoad(){
+      try{
+        const ref = docFn(FB_DB, SHARED_COLL, SHARED_DOC);
+        const snap = await getDoc(ref);
+        if (snap.exists()){
+          orgData = migrateIfNeeded(snap.data());
+        } else {
+          orgData = { departments: { "General": { users: { "User 1": { title:"", board: defaultBoard() } } } } };
+          await setDoc(ref, orgData);
+        }
+      } catch(err){
+        console.error("Firestore load error:", err);
+        // fallback — локальный кеш
+        try {
+          const s = localStorage.getItem(STORAGE_KEY);
+          if (s) orgData = migrateIfNeeded(JSON.parse(s));
+        } catch(e){}
+      }
+
+      if (!Object.keys(orgData.departments).length){
+        orgData.departments["General"] = { users: { "User 1": { title:"", board: defaultBoard() } } };
+      }
+      currentDepartment = Object.keys(orgData.departments)[0];
+      const users = Object.keys(orgData.departments[currentDepartment].users);
+      if (!users.length) orgData.departments[currentDepartment].users["User 1"] = { title:"", board: defaultBoard() };
+      currentUser = Object.keys(orgData.departments[currentDepartment].users)[0];
+      monthPagerStart = firstOfMonth(new Date());
+
+      // Синхронизируем текущее состояние в базу (единообразие)
+      save();
+      resolve();
+    }
+
+    // ждём авторизацию, если её ещё нет
+    if (FB_AUTH && FB_AUTH.currentUser) doLoad();
+    else {
+      const onAuth = () => { window.removeEventListener('fbAuthChanged', onAuth); doLoad(); };
+      window.addEventListener('fbAuthChanged', onAuth);
+    }
+  });
 }
-function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(orgData)); }
+function save(){
+  try {
+    const FB_DB  = window.__FB_DB;
+    const docFn  = window.__fbDoc;
+    const setDoc = window.__fbSetDoc;
+    const ref = docFn(FB_DB, 'shared', 'board');
+    __isLocalSave = true;
+    setDoc(ref, orgData);
+  } catch(err){
+    console.error("Firestore save error:", err);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(orgData));
+  }
+}
+async function ensureUserFromProfile(){
+  const prof = window.currentUserProfile;
+  if (!prof) return;
+
+  const dept   = prof.department;
+  const name   = prof.displayName;
+  const title  = prof.position || prof.title || "";
+  // гарантия существования департамента
+  orgData.departments[dept] = orgData.departments[dept] || { users: {} };
+
+  // если пользователя нет — создаём
+  if (!orgData.departments[dept].users[name]) {
+    orgData.departments[dept].users[name] = { title, board: defaultBoard() };
+    currentDepartment = dept;
+    currentUser = name;
+    save();
+  } else {
+    // синхронизация должности, если изменилась
+    const node = orgData.departments[dept].users[name];
+    if ((node.title || "") !== title) {
+      node.title = title;
+      save();
+    }
+  }
+}
+
+// ---------- Roles / Permissions ----------
+function isSuper(){ return (window.currentUserProfile?.role === "super"); }
+
+function canManageDept(targetDept){
+  const prof = window.currentUserProfile;
+  if (!prof) return false;
+  if (isSuper()) return true;
+  if (prof.role === "director") return true;
+  if (prof.role === "leader" && prof.department === targetDept) return true;
+  return false; // member — нет прав
+}
+
+// редактирование значений KPI (дни) — своё, лидер в департаменте, директор/супер везде
+function canEditUser(targetDept, targetUserName){
+  const prof = window.currentUserProfile;
+  if (!prof) return false;
+  if (isSuper()) return true;
+  if (prof.role === "director") return true;
+  if (prof.role === "leader" && prof.department === targetDept) return true;
+  if (prof.role === "member" && prof.department === targetDept && targetUserName === prof.displayName) return true;
+  return false;
+}
+
+// управление структурой KPI (добавить/переименовать/менять Target/удалять)
+function canManageKpi(targetDept){
+  const prof = window.currentUserProfile;
+  if (!prof) return false;
+  if (isSuper()) return true;
+  if (prof.role === "director") return true;
+  if (prof.role === "leader" && prof.department === targetDept) return true;
+  return false;
+}
+function canAddKpi(targetDept){ return canManageKpi(targetDept); }
+function canDeleteKpi(targetDept){ return canManageKpi(targetDept); }
+
+function startRealtime(){
+  const FB_DB = window.__FB_DB;
+  const docFn = window.__fbDoc;
+  const onSnap = window.__fbSnap;
+  if (!FB_DB || !docFn || !onSnap) return;
+
+  if (__unsubRT) { __unsubRT(); __unsubRT = null; }
+  const ref = docFn(FB_DB, 'shared', 'board');
+
+  __unsubRT = onSnap(ref, (snap)=>{
+    if (!snap.exists()) return;
+    // если это наш локальный save — пропускаем один цикл
+    if (__isLocalSave) { __isLocalSave = false; return; }
+
+    const incoming = migrateIfNeeded(snap.data());
+    if (JSON.stringify(incoming) !== JSON.stringify(orgData)) {
+      orgData = incoming;
+      renderUsers();
+      renderTable();
+      renderSidebar();
+    }
+  });
+}
 
 // ---------- Range helpers ----------
 function currentDateRange(){
@@ -310,9 +453,9 @@ function ensureDeptSelector(){
     chip.addEventListener("contextmenu", (e)=>{
       e.preventDefault();
       openContextMenu([
-        {label:"Rename Department", action: ()=>openRenameDeptModal(d)},
-        {label:"Delete Department", action: ()=>deleteDepartment(d), danger:true},
-        {label:"Add Department",    action: openAddDeptModal},
+        {label:"Rename Department", action: ()=> canManageDept(d) ? openRenameDeptModal(d) : alert("Недостаточно прав")},
+        {label:"Delete Department", action: ()=> canManageDept(d) ? deleteDepartment(d) : alert("Недостаточно прав"), danger:true},
+        {label:"Add Department",    action: ()=> canManageDept(d) ? openAddDeptModal() : alert("Недостаточно прав")},
       ], e.pageX, e.pageY);
     });
 
@@ -332,6 +475,10 @@ function switchDepartment(d){
   save(); renderUsers(); renderTable();
 }
 function deleteDepartment(deptName){
+  if (!canManageDept(deptName)) {
+    alert("Недостаточно прав для удаления департамента.");
+    return;
+  }
   const depts = Object.keys(orgData.departments);
   if (depts.length <= 1){
     alert("You cannot delete the last department.");
@@ -369,12 +516,16 @@ function renderTable(){
   board.rows.forEach((row, rIdx) => {
     const tr = document.createElement("tr");
 
-    // KPI name — RMB inline rename/delete
+    // KPI name — RMB inline rename/delete (только у тех, у кого есть права управлять KPI)
     const thName = document.createElement("th");
     thName.className = "col-kpi editable";
     thName.textContent = row.name;
     thName.addEventListener("contextmenu", (e) => {
       e.preventDefault();
+      if (!canManageKpi(currentDepartment)) {
+        alert("Недостаточно прав");
+        return;
+      }
       openContextMenu([
         {label:"Rename", action: () => inlineRenameRowCell(thName, rIdx)},
         {label:"Delete", action: () => deleteRow(rIdx), danger:true},
@@ -382,11 +533,18 @@ function renderTable(){
     });
     tr.appendChild(thName);
 
-    // Target — RMB edit
+    // Target — RMB edit (только менеджеры KPI)
     const tdTarget = document.createElement("td");
     tdTarget.className = "col-target editable";
     tdTarget.textContent = row.target;
-    tdTarget.addEventListener("contextmenu", (e) => { e.preventDefault(); makeEditableField(tdTarget, row, "target"); });
+    tdTarget.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      if (!canManageKpi(currentDepartment)) {
+        alert("Недостаточно прав");
+        return;
+      }
+      makeEditableField(tdTarget, row, "target");
+    });
     tr.appendChild(tdTarget);
 
     if (viewLevel === "month"){
@@ -417,7 +575,14 @@ function renderTable(){
         wrap.className = "rag progress";
         td.appendChild(wrap);
         paintCellProgress(wrap, val);
-        td.addEventListener("contextmenu", (e)=>{ e.preventDefault(); makeEditableDate(td, row, key); });
+        td.addEventListener("contextmenu", (e)=>{
+          e.preventDefault();
+          if (!canEditUser(currentDepartment, currentUser)) {
+            alert("У вас нет прав редактировать этот KPI");
+            return;
+          }
+          makeEditableDate(td, row, key);
+        });
         tr.appendChild(td);
       });
     }
@@ -504,7 +669,7 @@ function makeEditableDate(cell, row, dateKey){
   input.addEventListener("blur", saveAndRerender);
 }
 
-// ---------- Inline rename KPI (исправлена рекурсия) ----------
+// ---------- Inline rename KPI ----------
 function inlineRenameRowCell(cellEl, rIdx){
   const row = orgData.departments[currentDepartment].users[currentUser].board.rows[rIdx];
   if (cellEl.querySelector("input.inline-input")) return;
@@ -514,17 +679,8 @@ function inlineRenameRowCell(cellEl, rIdx){
   input.type = "text"; input.value = oldVal; input.className = "inline-input";
   cellEl.innerHTML = ""; cellEl.appendChild(input);
   input.focus(); input.select();
-
   const cancel = () => { row.name = oldVal; renderTable(); };
-
-  // ВАЖНО: не перекрываем глобальную save()
-  const commit = () => {
-    const v = input.value.trim();
-    if (v) row.name = v;
-    save();
-    renderTable();
-  };
-
+  const commit = () => { const v = input.value.trim(); if (v) row.name = v; save(); renderTable(); };
   input.addEventListener("keydown", (e)=>{ if (e.key==="Enter") commit(); else if (e.key==="Escape") cancel(); });
   input.addEventListener("blur", commit);
 }
@@ -562,9 +718,16 @@ function openContextMenu(items, x, y){
 
 // ---------- KPI row ops ----------
 function deleteRow(rIdx){
+  if (!canDeleteKpi(currentDepartment)) {
+    alert("У вас нет прав на удаление KPI.");
+    return;
+  }
   const board = orgData.departments[currentDepartment].users[currentUser].board;
-  if (!confirm("Delete this KPI row?")) return;
+  const row = board.rows[rIdx];
+  if (!row) return;
+  if (!confirm(`Delete KPI "${row.name}"?`)) return;
   board.rows.splice(rIdx, 1);
+  selectedRow = -1;
   save(); renderTable();
 }
 
@@ -581,13 +744,16 @@ function renderUsers() {
 
     btn.onclick = () => { currentUser = name; renderUsers(); renderTable(); };
 
-    btn.addEventListener("contextmenu", (e)=>{
-      e.preventDefault();
-      openContextMenu([
-        {label:"Rename", action: ()=>openRenameUserModal(name)},
-        {label:"Delete", action: ()=>deleteUser(name), danger:true},
-      ], e.pageX, e.pageY);
-    });
+    // контекстное меню только для управляющих департаментом
+    if (canManageDept(currentDepartment)) {
+      btn.addEventListener("contextmenu", (e)=>{
+        e.preventDefault();
+        openContextMenu([
+          {label:"Rename", action: ()=>openRenameUserModal(name)},
+          {label:"Delete", action: ()=>deleteUser(name), danger:true},
+        ], e.pageX, e.pageY);
+      });
+    }
 
     container.appendChild(btn);
   });
@@ -595,6 +761,10 @@ function renderUsers() {
   renderSidebar();
 }
 function deleteUser(name){
+  if (!canManageDept(currentDepartment)) {
+    alert("Недостаточно прав для удаления пользователей.");
+    return;
+  }
   const users = orgData.departments[currentDepartment].users;
   if (!confirm(`Delete user "${name}" and all his data?`)) return;
   const rest = Object.keys(users).filter(k=>k!==name);
@@ -648,11 +818,13 @@ function ensureAppMenuButton(headerEl){
     floatBtn.addEventListener("click", (e)=>{
       e.stopPropagation();
       const r = floatBtn.getBoundingClientRect();
-      openContextMenu([
-        {label:"Add User",       action: addUserFromMenu},
-        {label:"Add KPI",        action: addKpiFromMenu},
-        {label:"Add Department", action: openAddDeptModal},
-      ], r.right, r.bottom+6);
+      const menuItems = [
+        {label:"Add User",       action: canManageDept(currentDepartment) ? addUserFromMenu : null},
+        {label:"Add KPI",        action: canAddKpi(currentDepartment) ? addKpiFromMenu : null},
+        {label:"Add Department", action: canManageDept(currentDepartment) ? openAddDeptModal : null},
+        {label:"Logout",         action: ()=>window.__fbLogout && window.__fbLogout()},
+      ].filter(i => i.action);
+      openContextMenu(menuItems, r.right, r.bottom+6);
     });
     return;
   }
@@ -674,7 +846,6 @@ function ensureAppMenuButton(headerEl){
     btn.title = "Menu";
     btn.textContent = "≡";
     header.appendChild(btn);
-    // keep it last (rightmost)
   } else {
     header.appendChild(btn); // move to the end if structure changed
   }
@@ -682,19 +853,32 @@ function ensureAppMenuButton(headerEl){
   btn.addEventListener("click", (e)=>{
     e.stopPropagation();
     const r = btn.getBoundingClientRect();
-    openContextMenu([
-      {label:"Add User",       action: addUserFromMenu},
-      {label:"Add KPI",        action: addKpiFromMenu},
-      {label:"Add Department", action: openAddDeptModal},
-    ], r.right, r.bottom+6);
+    const menuItems = [
+      {label:"Add User",       action: canManageDept(currentDepartment) ? addUserFromMenu : null},
+      {label:"Add KPI",        action: canAddKpi(currentDepartment) ? addKpiFromMenu : null},
+      {label:"Add Department", action: canManageDept(currentDepartment) ? openAddDeptModal : null},
+      {label:"Logout",         action: ()=>window.__fbLogout && window.__fbLogout()},
+    ].filter(i => i.action);
+    openContextMenu(menuItems, r.right, r.bottom+6);
   }, { once:false });
 }
 function addKpiFromMenu(){
+  if (!canAddKpi(currentDepartment)) {
+    alert("Недостаточно прав для добавления KPI.");
+    return;
+  }
   const board = orgData.departments[currentDepartment].users[currentUser].board;
   board.rows.push({ name:"New KPI", target:">= 0", entries:{} });
   save(); renderTable();
 }
-function addUserFromMenu(){ openAddUserModal(); }
+
+function addUserFromMenu(){
+  if (!canManageDept(currentDepartment)) {
+    alert("Недостаточно прав для добавления пользователя.");
+    return;
+  }
+  openAddUserModal();
+}
 
 // ---------- Sidebar (left) ----------
 function renderSidebar(){
@@ -970,6 +1154,11 @@ function openRenameUserModal(oldName){
 
 // ---------- Modal: Add Department ----------
 function openAddDeptModal(){
+  if (!canManageDept(currentDepartment)) {
+    alert("Недостаточно прав для добавления департамента.");
+    return;
+  }
+
   const root = ensureModalRoot();
   root.classList.add("active");
   root.style.display = "flex";
@@ -1030,6 +1219,11 @@ function openAddDeptModal(){
 
 // ---------- Modal: Rename Department ----------
 function openRenameDeptModal(initialName){
+  if (!canManageDept(currentDepartment)) {
+    alert("Недостаточно прав для переименования департамента.");
+    return;
+  }
+
   const dept = initialName || currentDepartment;
   const root = ensureModalRoot();
   root.classList.add("active");
@@ -1108,5 +1302,25 @@ function hideDeprecatedButtons(){
 }
 
 // ---------- Init ----------
-load();
-renderTable();
+window.addEventListener('fbAuthChanged', async (e) => {
+  const user = e.detail;
+  if (user) {
+    window.hideLoginScreen && window.hideLoginScreen();
+    await load();               // загрузили общую доску из Firestore
+    await ensureUserFromProfile(); // гарантировали карточку и переключились
+    startRealtime();            // подписка на live-обновления
+    renderUsers();
+    renderTable();
+    renderSidebar();
+  } else {
+    if (typeof __unsubRT === 'function') { __unsubRT(); __unsubRT = null; }
+    window.showLoginScreen && window.showLoginScreen();
+  }
+});
+
+if (window.__FB_AUTH && window.__FB_AUTH.currentUser) {
+  window.dispatchEvent(new CustomEvent('fbAuthChanged', { detail: window.__FB_AUTH.currentUser }));
+} else {
+  window.showLoginScreen && window.showLoginScreen();
+}
+
